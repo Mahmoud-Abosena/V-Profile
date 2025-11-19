@@ -1,0 +1,104 @@
+version: "3.8"
+
+networks:
+  frontend_net:
+  app_db_net:
+  app_cach_net:
+  app_msg_net:
+
+services:
+  mysql:
+    container_name: db01
+    build:
+      context: ./db/
+      dockerfile: Dockerfile
+
+    environment:
+      MYSQL_ROOT_PASSWORD: admin123
+      MYSQL_DATABASE: accounts
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin123
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - app_db_net
+
+  memcached:
+    image: memcached:latest
+    command: memcached -m 512
+    networks:
+      - app_cach_net
+
+  rabbitmq:
+    container_name: rmq01
+    image: rabbitmq:3-management
+
+    environment:
+      RABBITMQ_DEFAULT_USER: test
+      RABBITMQ_DEFAULT_PASS: test
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - app_msg_net 
+
+  app:
+
+    container_name: app
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: accounts
+      DB_USER: admin
+      DB_PASS: admin123
+      RABBITMG_HOST: rabbitmq
+      RABBITMG_USER: test
+      RABBITMG_PASS: test
+      MEMCACHED_HOST: memcached
+      MEMCACHED_PORT: 11211
+
+    ports:
+      - "8080:8080"          # only for debugging; in production, you may not expose
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app_db_net
+      - app_cach_net
+      - app_msg_net
+      - frontend_net
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+
+    depends_on:
+      app:
+        condition: service_healthy
+
+    networks:
+      - frontend_net
