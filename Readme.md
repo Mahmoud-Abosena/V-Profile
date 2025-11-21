@@ -106,7 +106,7 @@ Automated build, test, and deployment pipeline:
 ```yaml
 # Pipeline Stages
 ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
-│  Code    │──▶│  Build   │──▶│   Test   │──▶│  Deploy  │
+│  Code    │─▶│  Build    │─▶│   Test   │─▶│  Deploy   │
 │  Commit  │   │  Docker  │   │  Image   │   │  to K8s  │
 └──────────┘   └──────────┘   └──────────┘   └──────────┘
      │              │               │              │
